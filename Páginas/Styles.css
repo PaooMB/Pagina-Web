@@ -1,0 +1,90 @@
+*{
+margin: 0;
+padding: 0; 
+}
+html{
+height: 100%;
+padding: 0;
+margin: 0;
+}
+body{
+position:absolute;
+top:0; bottom:0; right:0; left:0;
+background-image:linear-gradient(#606060,#606060);
+min-height:100%;
+}
+div.contenido{
+height:100%;
+}
+div#navigation ul{
+list-style-type:none;
+margin:0;
+padding:0px;
+overflow:hidden;
+background-color:#EEEEEE;
+border:1px solid black;
+position:fixed;
+width:100%;
+}
+div#navigation ul>li{
+float:left;
+}
+div#navigation li a{
+text-decoration: none;
+color:navy;
+padding:14px 16px;
+display: block;
+text-align: right;
+text-transform: uppercase;
+}
+div#navigation li .active {
+color: white;
+background-color: navy;
+}
+div#navigation li:hover{
+background-color: rgba(0,0,0,0.2);
+color: skyblue;
+transition: 0.3s ease;
+}
+div#top-image{
+height:20%;
+background-repeat:no-repeat;
+background-position: center;
+background-size: cover;
+background-image:url("http://drive.google.com/uc?id=1azUr6R-OLbbVm8E7htVUEoXM6Y4H8BPP");
+}
+div#cuerpo{
+width:85%;
+margin: -20px auto;
+background-color: #ffffff;
+border-radius: 12px 12px 0px 0px;
+box-shadow: 4px 4px rgba(255,255,255,0.3);
+height: auto;
+text-align: center;
+padding: 12px 30px;
+}
+div#cuerpo h1{
+margin: 40px;
+font-size:60px;
+text-align:center;
+text-decoration: navy underline;
+}
+div#cuerpo form.linea1{
+display: inline-block;
+}
+div#cuerpo form.linea2{
+display: inline-block;
+}
+button{
+color: aliceblue;
+margin: 20px auto;
+font-size: 30px;
+cursor:pointer;
+border-radius: 5px;
+border:none;
+padding: 13px;
+background-color:steelblue;
+}
+div.formulario{
+margin: 0 auto;
+}

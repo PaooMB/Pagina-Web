@@ -1,0 +1,701 @@
+﻿<#@ template inherits="Microsoft.VisualStudio.TextTemplating.VSHost.ModelingTextTransformation" 
+language="C#" hostspecific="True"#>
+<#@ output extension=".html" #>
+<#@ DMMPMBGTHDERAWebBD processor="DMMPMBGTHDERAWebBDDirectiveProcessor" requires="fileName='Modelo.DMMPMBGTHDERAWebBD'" #>
+
+<#@ include file="EF.utility.CS.ttinclude" #> 
+<#
+	var fileManager=EntityFrameworkTemplateFileManager.Create(this); 
+
+	//CREAR PÁGINA PRINCIPAL
+	anadirHead("Inicio");
+	anadirMenu(this.Modelado.NombreDelProyecto);
+	menuPrincipal();
+	cerrarCuerpo();
+
+	//CREAR PAGINAS PARA OPERACIONES
+	String[] paginas={"Consultas","Inserciones","Modificaciones","Borrados"};
+	foreach(String i in paginas){
+		
+		fileManager.StartNewFile(i.ToLower()+".html");
+		anadirHead(i);
+		anadirMenu(i);
+		WriteLine("<ul style=\"list-style-type:none;\">");
+
+		//ENTIDADES
+
+		if(this.Modelado.Entidad.Count>0){
+			foreach(Entidad e in this.Modelado.Entidad){
+				WriteLine("<li style=\"margin:40px\"><a href=\""+i+e.Nombre+".php\" style=\"background-color: steelblue; border:15px solid steelblue;border-radius:3px; text-decoration:none; color:white\">"+e.Nombre+"</a></li>");
+			}//end foreach
+		}//end if
+
+		//RELACIONES
+		if(this.Modelado.Relacion.Count >0 )
+		foreach(Relacion r in this.Modelado.Relacion){
+			RelacionReferencesEntidadA rA = RelacionReferencesEntidadA.GetLinkToEntidadA(r);
+			RelacionReferencesEntidadB rB = RelacionReferencesEntidadB.GetLinkToEntidadB(r);
+
+			if(rA.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0 || rA.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0){
+				if(rB.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0 || rB.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0){
+					Write("<li style=\"margin:40px\"> <a href=\""+ i+ r.Nombre +".php\" style=\"background-color: steelblue; border:15px solid steelblue;border-radius:3px; text-decoration:none; color:white\">" + r.Nombre + "</a>");
+					WriteLine("</li>");
+
+				
+				}// end if rB
+			}// end if rA
+		}// end foreach
+		WriteLine("</ul>");
+		cerrarCuerpo();
+	}
+
+	fileManager.StartNewFile("Styles.css");
+
+	//CREAR HOJAS DE ESTILO
+	crearCSS();
+
+	
+	//AÑADIR PAGINAS DE ENTIDAD PARA CONSULTAS
+
+	foreach(String i in paginas){
+	if(this.Modelado.Entidad.Count>0){
+		foreach(Entidad e in this.Modelado.Entidad){
+			fileManager.StartNewFile(i+e.Nombre + ".php");
+			anadirHead(e.Nombre);
+			anadirMenu(i+"</h1><h1 style=\"font-size:40px\">"+"\""+e.Nombre+"\"");
+			anadirFormularioEntidad(i,e);
+			cerrarCuerpo();
+		}//end foreach
+	}//end if
+	}
+
+	//AÑADIR PAGINAS DE RELACION PARA CONSULTAS
+
+	foreach(String i in paginas){
+	if(this.Modelado.Relacion.Count>0){
+		foreach(Relacion r in this.Modelado.Relacion){
+			RelacionReferencesEntidadA rA = RelacionReferencesEntidadA.GetLinkToEntidadA(r);
+			RelacionReferencesEntidadB rB = RelacionReferencesEntidadB.GetLinkToEntidadB(r);
+
+			if(rA.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0 || rA.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0){
+				if(rB.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0 || rB.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0){
+					fileManager.StartNewFile(i+r.Nombre + ".php");
+					anadirHead(r.Nombre);
+					anadirMenu(i+"</h1><h1 style=\"font-size:40px\">"+"\""+r.Nombre+"\"");
+					anadirFormularioRelacion(i,r);
+					cerrarCuerpo();
+				}//endif B
+			}//endif A
+		}//end foreach
+	}//end if
+	}
+	fileManager.Process(); 
+#>
+<#+
+	private void anadirFormularioRelacion(String i, Relacion r){
+		switch(i){
+		
+			case "Inserciones":
+				WriteLine("<?php ");
+				WriteLine("if (!(isset($_GET['var"+r.EntidadB.ClavePrimaria.Nombre+"'])) &&  !(isset($_GET['var"+r.EntidadA.ClavePrimaria.Nombre +"']))){");
+				WriteLine("?>");
+				WriteLine("<p>Introduce los datos a insertar:</p>");
+				WriteLine("<form>");
+					foreach(AtributoRelacion a in r.AtributoRelacion){
+						WriteLine(a.Nombre + " :  <input name= \"var"+ a.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+						WriteLine("<br/>");
+					}//end foreach
+
+				//CLAVE FORANEA B
+
+				WriteLine(r.EntidadB.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadB.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+				WriteLine("<br/>");
+
+				//CLAVE FORANEA A
+	
+				WriteLine(r.EntidadA.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadA.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+				
+				//BOTONES
+
+				WriteLine("");
+				WriteLine("<br/>");
+				WriteLine("<br/>");
+				Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Alta\"  />");
+				Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+				WriteLine("");	 
+				WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+				WriteLine("</form>");
+				WriteLine("<?php ");
+				WriteLine("}");
+				WriteLine("else{");
+				WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+				WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+				WriteLine("");
+				WriteLine("");
+				foreach(AtributoRelacion a in r.AtributoRelacion)
+					WriteLine("		$"+ a.Nombre + " = $_GET['var" + a.Nombre +"'];");
+				WriteLine("		$"+ r.EntidadA.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadA.ClavePrimaria.Nombre +"'];");
+				WriteLine("		$"+ r.EntidadB.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadB.ClavePrimaria.Nombre +"'];");
+				Write("	$resultado = mysqli_query($conex,\"INSERT INTO "+ r.Nombre + " VALUES (");
+				foreach(AtributoRelacion aE in r.AtributoRelacion){
+							Write(" '$" + aE.Nombre+"'");
+							Write(",");
+					 }
+					 Write("'$" + r.EntidadA.ClavePrimaria.Nombre+"',");
+					 Write("'$" + r.EntidadB.ClavePrimaria.Nombre+"'");
+					 WriteLine(")\");");
+					 WriteLine("");
+					 WriteLine("		if($conex->affected_rows>0){");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:green; font-size=18px\\\">INSERCION COMPLETADA CON EXITO</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	else{");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">EL INDENTIDICADOR YA SE ENCUENTRA EN LA BASE DE DATOS, INTENTELO DE NUEVO. </p>\";");
+					WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					 WriteLine("	mysqli_close($conex);");
+					 WriteLine("");
+					 WriteLine("}");
+					 WriteLine("?>");
+			break;
+
+			case "Consultas":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+r.EntidadB.ClavePrimaria.Nombre+"'])) &&  !(isset($_GET['var"+r.EntidadA.ClavePrimaria.Nombre +"']))){");
+					WriteLine("?>");
+					WriteLine("<form>");
+					
+					WriteLine("<p>Escriba un identificador para realizar la busqueda:</p>");
+
+					//CLAVE FORANEA B
+
+					WriteLine(r.EntidadB.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadB.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+	
+					//CLAVE FORANEA A
+					WriteLine(r.EntidadA.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadA.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Buscar\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+					WriteLine("		$"+ r.EntidadB.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadB.ClavePrimaria.Nombre +"'];");
+					WriteLine("		$"+ r.EntidadA.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadA.ClavePrimaria.Nombre +"'];");
+
+					WriteLine("	$resultado = mysqli_query($conex,\"SELECT * FROM "+r.Nombre+" WHERE "+ r.EntidadA.ClavePrimaria.Nombre +"='$"+r.EntidadA.ClavePrimaria.Nombre+"' AND "+ r.EntidadB.ClavePrimaria.Nombre +"='$"+ r.EntidadB.ClavePrimaria.Nombre + "'\");");
+					WriteLine("		if($resultado->num_rows>0){");
+					WriteLine("		$row=$resultado->fetch_assoc();");
+					WriteLine("	echo \"<p>Los resultados obtenidos para la busqueda son:</p>\";");
+					foreach(AtributoRelacion a in r.AtributoRelacion){
+						WriteLine("		echo \" <p><b>"+ a.Nombre+":</b>\".$row['"+a.Nombre+"'].\"</p>\";");
+					}
+					WriteLine("}");
+					 WriteLine("	else");
+					 WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">ERROR, NO HAY DATOS PARA LA CLAVE INTRODUCIDA</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					 WriteLine("");
+					 WriteLine("	mysqli_close($conex);");
+					 WriteLine("");
+					 WriteLine("}");
+					 WriteLine("?>");
+				break;
+				case "Modificaciones":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+r.EntidadB.ClavePrimaria.Nombre+"'])) &&  !(isset($_GET['var"+r.EntidadA.ClavePrimaria.Nombre +"']))){");					WriteLine("?>");
+					WriteLine("<form class=\"linea1\">");
+					WriteLine("<p>Introduce el identificador del elemento a modificar:</p>");
+					//CLAVE FORANEA B
+
+					WriteLine(r.EntidadB.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadB.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+	
+					//CLAVE FORANEA A
+					WriteLine(r.EntidadA.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadA.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+
+					WriteLine("<br/>");
+					WriteLine("<p>Introduzca los nuevos valores:</p>");
+					if(r.AtributoRelacion.Count>0)
+					foreach(AtributoRelacion aR in r.AtributoRelacion){
+						WriteLine(aR.Nombre + " :  <input name= \"var"+ aR.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+						WriteLine("<br/>");
+					}
+					WriteLine("");
+					WriteLine("<br/>");
+					WriteLine("<br/>");
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Modificar\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+
+
+
+
+					WriteLine("		$"+ r.EntidadB.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadB.ClavePrimaria.Nombre +"'];");
+					WriteLine("		$"+ r.EntidadA.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadA.ClavePrimaria.Nombre +"'];");
+
+					foreach(AtributoRelacion aR in r.AtributoRelacion)
+						 WriteLine("		$"+ aR.Nombre + " = $_GET['var" + aR.Nombre +"'];");
+					Write("	$resultado = mysqli_query($conex,\"UPDATE "+ r.Nombre + " SET ");
+					int cont=r.AtributoRelacion.Count;
+					foreach(AtributoRelacion aR in r.AtributoRelacion){
+							cont--;
+							Write(aR.Nombre+"='$" + aR.Nombre+"' ");
+							if(cont>0)
+							Write(",");
+					 }
+					 Write("WHERE "+ r.EntidadB.ClavePrimaria.Nombre + "='$" + r.EntidadB.ClavePrimaria.Nombre+"'  AND "+  r.EntidadA.ClavePrimaria.Nombre + "='$" + r.EntidadA.ClavePrimaria.Nombre +"' " );
+
+
+
+					 WriteLine("\");");
+					 WriteLine("");
+					WriteLine("		if($conex->affected_rows>0){");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:green; font-size=18px\\\">ACTUALIZACIÓN COMPLETADA CON EXITO</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	else{");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">EL INDENTIDICADOR NO SE ENCUENTRA EN LA BASE DE DATOS, INTENTELO DE NUEVO. </p>\";");
+					WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	mysqli_close($conex);");
+					WriteLine("");
+					WriteLine("}");
+					WriteLine("?>");
+				break;
+
+				case "Borrados":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+r.EntidadB.ClavePrimaria.Nombre+"'])) &&  !(isset($_GET['var"+r.EntidadA.ClavePrimaria.Nombre +"']))){");					WriteLine("?>");
+					WriteLine("<form class=\"linea1\">");
+					WriteLine("<p>Escriba el identicador del dato que desea borrar:</p>");
+					//CLAVE FORANEA B
+
+					WriteLine(r.EntidadB.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadB.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+	
+					//CLAVE FORANEA A
+					WriteLine(r.EntidadA.ClavePrimaria.Nombre + "_" + r.Nombre+ " :  <input name= \"var"+ r.EntidadA.ClavePrimaria.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+
+					//BOTONES
+					WriteLine("");
+					WriteLine("<br/>");
+					WriteLine("<br/>");
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Eliminar\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+					WriteLine("		$"+ r.EntidadB.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadB.ClavePrimaria.Nombre +"'];");
+					WriteLine("		$"+ r.EntidadA.ClavePrimaria.Nombre + " = $_GET['var" + r.EntidadA.ClavePrimaria.Nombre +"'];");
+					Write("	$resultado = mysqli_query($conex,\"DELETE FROM "+ r.Nombre );
+					 Write(" WHERE "+ r.EntidadB.ClavePrimaria.Nombre + "='$" + r.EntidadB.ClavePrimaria.Nombre+"'  AND "+  r.EntidadA.ClavePrimaria.Nombre + "='$" + r.EntidadA.ClavePrimaria.Nombre +"' " );
+					 WriteLine("\");");
+					 WriteLine("");
+					WriteLine("		if($conex->affected_rows>0){");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:green; font-size=18px\\\">BORRADO COMPLETADO CON EXITO</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	else{");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">EL INDENTIDICADOR NO SE ENCUENTRA EN LA BASE DE DATOS, INTENTELO DE NUEVO. </p>\";");
+					WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	mysqli_close($conex);");
+					WriteLine("");
+					WriteLine("}");
+					WriteLine("?>");
+				break;
+							
+
+		}//END SWITCH
+	}
+#>
+<#+
+	private void anadirFormularioEntidad(String i, Entidad e){
+		switch(i){
+		
+			case "Inserciones":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+e.ClavePrimaria.Nombre+"']))){");
+					WriteLine("?>");
+					WriteLine("<p>Introduce los datos a insertar:</p>");
+					WriteLine("<form class=\"linea1\">");
+					WriteLine("<p><i><u>"+e.ClavePrimaria.Nombre + "</u> : </i><input name= \"var"+ e.ClavePrimaria.Nombre +"\" type=\"text\" style=\" margin:10px 5px 10px 4px; width:140px; margin:5px; border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+					if(e.AtributoEntidad.Count>0)
+					foreach(AtributoEntidad aE in e.AtributoEntidad){
+						WriteLine(aE.Nombre + " :  <input name= \"var"+ aE.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+						WriteLine("<br/>");
+					}//End foreach
+					
+					//BOTONES
+					WriteLine("<br/>");
+					WriteLine("<br/>");
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Alta\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+					WriteLine("		$"+ e.ClavePrimaria.Nombre + " = $_GET['var" + e.ClavePrimaria.Nombre +"'];");
+					foreach(AtributoEntidad aE in e.AtributoEntidad)
+						 WriteLine("		$"+ aE.Nombre + " = $_GET['var" + aE.Nombre +"'];");
+
+						
+					Write("	$resultado = mysqli_query($conex,\"INSERT INTO "+ e.Nombre + " VALUES (");
+
+					
+				
+					foreach(AtributoEntidad aE in e.AtributoEntidad){
+							Write(" '$" + aE.Nombre+"'");
+							Write(",");
+					 }
+
+					 	 Write("'$" + e.ClavePrimaria.Nombre+"'");
+
+					
+
+					 WriteLine(")\");");
+					 WriteLine("");
+					 WriteLine("		if($conex->affected_rows>0){");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:green; font-size=18px\\\">INSERCION COMPLETADA CON EXITO</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	else{");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">EL INDENTIFICADOR NO SE ENCUENTRA EN LA BASE DE DATOS, INTENTELO DE NUEVO. </p>\";");
+					WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	mysqli_close($conex);");
+					 WriteLine("");
+					 WriteLine("}");
+					 WriteLine("?>");
+					 WriteLine("");
+				break;
+
+				case "Consultas":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+e.ClavePrimaria.Nombre+"']))){");
+					WriteLine("?>");
+					WriteLine("<form class=\"linea1\">");
+					WriteLine("<p>Escriba un identificador para realizar la busqueda:</p>");
+					WriteLine("<p><i><u>"+e.ClavePrimaria.Nombre + "</u> : </i><input name= \"var"+ e.ClavePrimaria.Nombre +"\" type=\"text\" style=\" margin:10px 5px 10px 4px; width:140px; margin:5px; border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+					WriteLine("");
+					WriteLine("<br/>");
+					WriteLine("<br/>");
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Buscar\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+					WriteLine("		$"+ e.ClavePrimaria.Nombre + " = $_GET['var" + e.ClavePrimaria.Nombre +"'];");
+					WriteLine("	$resultado = mysqli_query($conex,\"SELECT * FROM "+e.Nombre+" WHERE "+e.ClavePrimaria.Nombre+"='$"+e.ClavePrimaria.Nombre+"'\");");
+					WriteLine("		if($resultado->num_rows>0){");
+					WriteLine("		$row=$resultado->fetch_assoc();");
+					WriteLine("		echo \" <p>Los datos obtenidos para la busqueda son:</p>\";");
+					foreach(AtributoEntidad a in e.AtributoEntidad){
+						WriteLine("		echo \" <p><b>"+ a.Nombre+":</b>\".$row['"+a.Nombre+"'].\"</p>\";");
+					}
+					WriteLine("}");
+					 WriteLine("	else");
+					 WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">ERROR, NO HAY DATOS PARA LA CLAVE INTRODUCIDA</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					 WriteLine("");
+					 WriteLine("	mysqli_close($conex);");
+					 WriteLine("");
+					 WriteLine("}");
+					 WriteLine("?>");
+				break;
+				case "Modificaciones":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+e.ClavePrimaria.Nombre+"']))){");
+					WriteLine("?>");
+					WriteLine("<p>Escriba el identificador del elemento a modificar:</p>");
+					WriteLine("<form class=\"linea1\">");
+					WriteLine("<p><i><u>"+e.ClavePrimaria.Nombre + "</u> : </i><input name= \"var"+ e.ClavePrimaria.Nombre +"\" type=\"text\" style=\" margin:10px 5px 10px 4px; width:140px; margin:5px; border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+					WriteLine("<p>Introduzca los nuevos valores:</p>");
+					if(e.AtributoEntidad.Count>0)
+					foreach(AtributoEntidad aE in e.AtributoEntidad){
+						WriteLine(aE.Nombre + " :  <input name= \"var"+ aE.Nombre +"\" type=\"text\" style=\"width:140px; margin:5px;border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+						WriteLine("<br/>");
+					}
+					WriteLine("");
+					WriteLine("<br/>");
+					WriteLine("<br/>");
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Modificar\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+					WriteLine("		$"+ e.ClavePrimaria.Nombre + " = $_GET['var" + e.ClavePrimaria.Nombre +"'];");
+					foreach(AtributoEntidad aE in e.AtributoEntidad)
+						 WriteLine("		$"+ aE.Nombre + " = $_GET['var" + aE.Nombre +"'];");
+					Write("	$resultado = mysqli_query($conex,\"UPDATE "+ e.Nombre + " SET ");
+					int cont=e.AtributoEntidad.Count;
+					foreach(AtributoEntidad aE in e.AtributoEntidad){
+							cont--;
+							Write(aE.Nombre+"='$" + aE.Nombre+"' ");
+							if(cont>0)
+							Write(",");
+					 }
+					 Write("WHERE "+ e.ClavePrimaria.Nombre+"='$" + e.ClavePrimaria.Nombre+"'");
+					 WriteLine("\");");
+					 WriteLine("");
+					WriteLine("		if($conex->affected_rows>0){");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:green; font-size=18px\\\">ACTUALIZACIÓN COMPLETADA CON EXITO</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	else{");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">EL INDENTIDICADOR NO SE ENCUENTRA EN LA BASE DE DATOS, INTENTELO DE NUEVO. </p>\";");
+					WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	mysqli_close($conex);");
+					WriteLine("");
+					WriteLine("}");
+					WriteLine("?>");
+				break;
+
+				case "Borrados":
+					WriteLine("<?php ");
+					WriteLine("if (!(isset($_GET['var"+e.ClavePrimaria.Nombre+"']))){");
+					WriteLine("?>");
+					WriteLine("<form class=\"linea1\">");
+					WriteLine("<p>Escriba el identicador del dato que desea borrar:</p>");
+					WriteLine("<p><i><u>"+e.ClavePrimaria.Nombre + "</u> : </i><input name= \"var"+ e.ClavePrimaria.Nombre +"\" type=\"text\" style=\" margin:10px 5px 10px 4px; width:140px; margin:5px; border:1px solid steelblue; padding:5px; border-radius:5px\" value=\"\">");
+					WriteLine("<br/>");
+					//BOTONES
+					WriteLine("");
+					WriteLine("<br/>");
+					WriteLine("<br/>");
+					Write("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type= \"submit\" value=\"Eliminar\"  />");
+					Write(" <input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\" type=\"reset\" value=\"Restablecer\"  />");
+					WriteLine("");	 
+					WriteLine("<input style=\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\"type=\"button\" value=\"P&aacute;gina anterior\" onClick=\"history.go(-1);\">");
+					WriteLine("</form>");
+					WriteLine("<?php ");
+					WriteLine("}");
+					WriteLine("else{");
+					WriteLine(" $conex = mysqli_connect(\"localhost\",\"usuarioWeb\") or die(\"ERROR...\");");
+					WriteLine("	mysqli_select_db($conex,\"" + this.Modelado.NombreDelProyecto + "\") or die(\"ERROR CON LA BASE DE DATOS\");");
+					WriteLine("");
+					WriteLine("");
+					WriteLine("		$"+ e.ClavePrimaria.Nombre + " = $_GET['var" + e.ClavePrimaria.Nombre +"'];");
+					Write("	$resultado = mysqli_query($conex,\"DELETE FROM "+ e.Nombre );
+					 Write(" WHERE "+ e.ClavePrimaria.Nombre+"='$" + e.ClavePrimaria.Nombre+"'");
+					 WriteLine("\");");
+					 WriteLine("");
+					WriteLine("		if($conex->affected_rows>0){");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:green; font-size=18px\\\">BORRADO COMPLETADO CON EXITO</p>\";");
+					 WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	else{");
+					WriteLine("		echo \"<p style=\\\"color:white; background-color:red; font-size=18px\\\">EL INDENTIDICADOR NO SE ENCUENTRA EN LA BASE DE DATOS, INTENTELO DE NUEVO. </p>\";");
+					WriteLine("		echo \"<input style=\\\"color: aliceblue;margin: 20px auto;font-size: 16px;cursor:pointer;border-radius: 5px;border:none;padding: 7px; background-color:steelblue\\\"type=\\\"button\\\" value=\\\"P&aacute;gina anterior\\\" onClick=\\\"history.go(-1);\\\">\";");
+					WriteLine("}");
+					WriteLine("	mysqli_close($conex);");
+					WriteLine("");
+					WriteLine("}");
+					WriteLine("?>");
+				break;
+		}
+	}
+#>
+
+<#+
+	private void menuPrincipal(){
+		WriteLine("<form action=\"consultas.html\" class=\"linea1\">");
+		WriteLine("<div class=\"formulario\">");
+		WriteLine("<button type=\"submit\">Consultar</button>");
+		WriteLine("</div></form>");
+		WriteLine("<form action=\"inserciones.html\" class=\"linea1\">");
+		WriteLine("<div class=\"formulario\">");
+		WriteLine("<button type=\"submit\">Insertar</button>");
+		WriteLine("</div></form>");
+		WriteLine("<form action=\"modificaciones.html\" class=\"linea1\">");
+		WriteLine("<div class=\"formulario\">");
+		WriteLine("<button type=\"submit\">Modificar</button>");
+		WriteLine("</div></form>");
+		WriteLine("<form action=\"borrados.html\" class=\"linea1\">");
+		WriteLine("<div class=\"formulario\">");
+		WriteLine("<button type=\"submit\">Eliminar</button>");
+		WriteLine("</div></form>");
+	}
+#>
+
+<#+
+	private void anadirMenu(String nombre){
+		WriteLine("<body>");
+		WriteLine("<div class=\"contenido\">");
+		WriteLine("<div id=\"navigation\">");
+		WriteLine("<ul>");
+		WriteLine("<li><a href=\"index.html\" class=\"active\">Inicio</a></li>");
+		WriteLine("<li><a href=\"consultas.html\">Consultas</a></li>");
+		WriteLine("<li><a href=\"inserciones.html\">Inserciones</a></li>");
+		WriteLine("<li><a href=\"modificaciones.html\">Modificaciones</a></li>");
+		WriteLine("<li><a href=\"borrados.html\">Borrados</a></li>");
+		WriteLine("</ul>");
+		WriteLine("</div>");
+		WriteLine("<div id=\"top-image\"></div>");
+		WriteLine("<div id=\"cuerpo\">");
+		WriteLine("<h1>"+nombre+"</h1>");
+	}
+#>
+
+<#+
+	private void cerrarCuerpo(){
+		WriteLine("</div>");
+		WriteLine("</div>");
+		WriteLine("</body>");
+		WriteLine("</html>");
+	}
+#>
+
+<#+
+	private void anadirHead(String nombre){
+	WriteLine("<html>");
+	WriteLine("\t<head>");
+	WriteLine("\t<title>"+nombre+"</title>");
+	WriteLine("\t<link type=\"text/css\" rel=\"stylesheet\" href=\"Styles.css\">");
+	WriteLine("\t</head>");
+	}
+#>
+<#+
+private void crearCSS(){
+	WriteLine("*{");
+	WriteLine("margin: 0;");
+	WriteLine("padding: 0; ");
+	WriteLine("}");
+	WriteLine("html{");
+	WriteLine("height: 100%;");
+	WriteLine("padding: 0;");
+	WriteLine("margin: 0;");
+	WriteLine("}");
+	WriteLine("body{");
+	WriteLine("position:absolute;");
+	WriteLine("top:0; bottom:0; right:0; left:0;");
+	WriteLine("background-image:linear-gradient(#606060,#606060);");
+	WriteLine("min-height:100%;");
+	WriteLine("}");
+	WriteLine("div.contenido{");	
+	WriteLine("height:100%;");
+	WriteLine("}");
+	WriteLine("div#navigation ul{");
+	WriteLine("list-style-type:none;");
+	WriteLine("margin:0;");
+	WriteLine("padding:0px;");
+	WriteLine("overflow:hidden;");
+	WriteLine("background-color:#EEEEEE;");
+	WriteLine("border:1px solid black;");
+	WriteLine("position:fixed;");
+	WriteLine("width:100%;");
+	WriteLine("}");
+	WriteLine("div#navigation ul>li{");
+	WriteLine("float:left;");
+	WriteLine("}");
+	WriteLine("div#navigation li a{");
+	WriteLine("text-decoration: none;");
+	WriteLine("color:navy;");
+	WriteLine("padding:14px 16px;");
+	WriteLine("display: block;");
+	WriteLine("text-align: right;");
+	WriteLine("text-transform: uppercase;");
+	WriteLine("}");
+	WriteLine("div#navigation li .active {");
+	WriteLine("color: white;");
+	WriteLine("background-color: navy;");
+	WriteLine("}");
+	WriteLine("div#navigation li:hover{");
+	WriteLine("background-color: rgba(0,0,0,0.2);");
+	WriteLine("color: skyblue;");
+	WriteLine("transition: 0.3s ease;");
+	WriteLine("}");
+	WriteLine("div#top-image{");
+	WriteLine("height:20%;");
+	WriteLine("background-repeat:no-repeat;");
+	WriteLine("background-position: center;");
+	WriteLine("background-size: cover;");
+	WriteLine("background-image:url(\"http://drive.google.com/uc?id=1azUr6R-OLbbVm8E7htVUEoXM6Y4H8BPP\");");
+	WriteLine("}");
+	WriteLine("div#cuerpo{");
+	WriteLine("width:85%;");
+	WriteLine("margin: -20px auto;");
+	WriteLine("background-color: #ffffff;");
+	WriteLine("border-radius: 12px 12px 0px 0px;");
+	WriteLine("box-shadow: 4px 4px rgba(255,255,255,0.3);");
+	WriteLine("height: auto;");
+	WriteLine("text-align: center;");
+	WriteLine("padding: 12px 30px;");
+	WriteLine("}");
+	WriteLine("div#cuerpo h1{");
+	WriteLine("margin: 40px;");
+	WriteLine("font-size:60px;");
+	WriteLine("text-align:center;");
+	WriteLine("text-decoration: navy underline;");
+	WriteLine("}");
+	WriteLine("div#cuerpo form.linea1{");
+	WriteLine("display: inline-block;");
+	WriteLine("}");
+	WriteLine("div#cuerpo form.linea2{");
+	WriteLine("display: inline-block;");
+	WriteLine("}");
+	WriteLine("button{");
+	WriteLine("color: aliceblue;");
+	WriteLine("margin: 20px auto;");
+	WriteLine("font-size: 30px;");
+	WriteLine("cursor:pointer;");
+	WriteLine("border-radius: 5px;");
+	WriteLine("border:none;");
+	WriteLine("padding: 13px;");
+	WriteLine("background-color:steelblue;");
+	WriteLine("}");
+	WriteLine("div.formulario{");
+	WriteLine("margin: 0 auto;");
+	WriteLine("}");
+}
+#>

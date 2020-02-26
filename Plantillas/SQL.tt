@@ -1,0 +1,124 @@
+﻿<#@ template inherits="Microsoft.VisualStudio.TextTemplating.VSHost.ModelingTextTransformation" #>
+<#@ output extension=".sql" #>
+<#@ DMMPMBGTHDERAWebBD processor="DMMPMBGTHDERAWebBDDirectiveProcessor" requires="fileName='Modelo.DMMPMBGTHDERAWebBD'" #>
+
+<#
+
+//CREAR BBDD
+
+WriteLine("CREATE DATABASE "+this.Modelado.NombreDelProyecto+";");
+WriteLine("USE "+this.Modelado.NombreDelProyecto+";\n");
+WriteLine("CREATE USER usuarioWeb;");
+WriteLine("GRANT SELECT,INSERT,UPDATE,DELETE ON * TO usuarioWeb;\n");
+
+//AÑADIR ENTIDADES
+
+if(this.Modelado.Entidad.Count>0){
+	foreach(Entidad e in this.Modelado.Entidad){
+		anadirEntidad(e);
+	}
+}
+
+//AÑADIR RELACIONES 
+
+if(this.Modelado.Relacion.Count>0){
+	foreach(Relacion r in this.Modelado.Relacion){
+		RelacionReferencesEntidadA rA = RelacionReferencesEntidadA.GetLinkToEntidadA(r);
+		RelacionReferencesEntidadB rB = RelacionReferencesEntidadB.GetLinkToEntidadB(r);
+		if(rA.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0 && rB.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0)
+			anadirRelacion(r);
+		else if(rA.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0 && rB.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0)
+			anadirRelacion(r);
+		else if(rA.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0 && rB.Cardinalidad.ToString().CompareTo("UNO_MUCHOS")==0)
+			anadirRelacion(r);
+		else if(rA.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0 && rB.Cardinalidad.ToString().CompareTo("CERO_MUCHOS")==0)
+			anadirRelacion(r);
+	}
+}
+
+
+
+
+
+
+
+#>
+<#+
+	private void anadirRelacion(Relacion r){
+		WriteLine("CREATE TABLE " + r.Nombre + "(");
+		if(r.AtributoRelacion.Count>0)
+			foreach(AtributoRelacion a in r.AtributoRelacion)
+				anadirAtributo(a);
+
+		Write("	"+ r.EntidadA.ClavePrimaria.Nombre + " " + r.EntidadA.ClavePrimaria.Tipo);
+		if(r.EntidadA.ClavePrimaria.Tipo.ToString().CompareTo("VARCHAR")==0){
+			Write(" (" + r.EntidadA.ClavePrimaria.Tamaño + ")");
+		}
+		WriteLine(",");
+
+		Write("	"+ r.EntidadB.ClavePrimaria.Nombre + " " + r.EntidadB.ClavePrimaria.Tipo);
+		if(r.EntidadB.ClavePrimaria.Tipo.ToString().CompareTo("VARCHAR")==0){
+			Write(" (" + r.EntidadB.ClavePrimaria.Tamaño + ")");
+		}
+		WriteLine(",");
+
+	
+		WriteLine("CONSTRAINT fk_" + r.EntidadA.ClavePrimaria.Nombre + "_" + r.Nombre);
+		WriteLine("	FOREIGN KEY (" + r.EntidadA.ClavePrimaria.Nombre + ")");
+		Write("	REFERENCES " + r.EntidadA.Nombre + "(" +r.EntidadA.ClavePrimaria.Nombre + ") ON DELETE CASCADE");
+		WriteLine(",");
+		WriteLine("	CONSTRAINT fk_" + r.EntidadB.ClavePrimaria.Nombre + "_" + r.Nombre);
+		WriteLine("	FOREIGN KEY (" + r.EntidadB.ClavePrimaria.Nombre + ")");
+		WriteLine("	REFERENCES " + r.EntidadB.Nombre + "(" +r.EntidadB.ClavePrimaria.Nombre + ") ON DELETE CASCADE");
+		WriteLine(");\n");
+	}
+#>
+
+<#+
+	private void anadirAtributo(AtributoRelacion a){
+		Write("\t" + a.Nombre + " " + a.Tipo);
+		if(a.Tipo.ToString().CompareTo("VARCHAR")==0){
+			Write(" (" + a.Tamaño + ")");
+		}
+		if(!a.ValorNulo)
+			Write(" NOT NULL");
+		else Write(" NULL");
+		WriteLine(",");
+	}
+
+#>
+
+
+<#+ 
+	private void anadirEntidad(Entidad e){
+
+		WriteLine("CREATE TABLE " + e.Nombre + "(");
+
+		if(e.AtributoEntidad.Count>0)
+			foreach(AtributoEntidad a in e.AtributoEntidad)
+				anadirAtributo(a);
+
+		Write("	"+e.ClavePrimaria.Nombre + " " + e.ClavePrimaria.Tipo);
+		if(e.ClavePrimaria.Tipo.ToString().CompareTo("VARCHAR")==0){
+			Write(" (" + e.ClavePrimaria.Tamaño + ")");
+		}
+		WriteLine(",");
+
+		WriteLine("\tPRIMARY KEY ("+e.ClavePrimaria.Nombre+")");
+		WriteLine(");\n");
+	}
+#>
+<#+
+	private void anadirAtributo(AtributoEntidad a){
+		Write("\t" + a.Nombre + " " + a.Tipo);
+		if(a.Tipo.ToString().CompareTo("VARCHAR")==0){
+			Write(" (" + a.Tamaño + ")");
+		}
+		if(!a.ValorNulo)
+			Write(" NOT NULL");
+		else Write(" NULL");
+		WriteLine(",");
+	}
+
+#>
+
